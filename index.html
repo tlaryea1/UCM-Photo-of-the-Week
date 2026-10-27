@@ -186,6 +186,17 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
 .tag.bug{background:var(--bad);color:#fff}
 .tag.idea{background:var(--gold);color:#1a1300}
 
+/* version footer, what's new, out-of-sync banner */
+.foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;border-top:1.5px solid var(--line);padding-top:14px;font-size:14px;color:var(--muted)}
+.foot .ver{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
+.cl{display:grid;gap:18px;max-height:60vh;overflow:auto}
+.cl section{display:grid;gap:6px}
+.cl h3{font-size:22px;text-transform:uppercase;display:flex;gap:10px;align-items:baseline}
+.cl h3 small{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:none}
+.cl ul{margin:0;padding-left:20px;display:grid;gap:4px}
+.banner{background:var(--gold-soft);border:1.5px solid var(--gold);color:var(--ink);border-radius:8px;padding:12px 16px;font-weight:600}
+
 .lb{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));cursor:zoom-out}
 .lb img{max-width:100%;max-height:92vh;object-fit:contain}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
@@ -214,6 +225,7 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
       <div data-p="closed"><small>Next Mon</small><b>Winner</b></div>
     </div>
     <p class="status" id="status"></p>
+    <div class="banner" id="syncBanner" role="alert" hidden></div>
   </header>
 
   <!-- sign-in -->
@@ -253,7 +265,20 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
     <section id="history" aria-label="Past winners" hidden></section>
     <section id="tools" class="tools" hidden aria-label="Admin tools"></section>
   </div>
+
+  <footer class="foot">
+    <span class="ver" id="ver"></span>
+    <button type="button" class="linkbtn" id="openChangelog">What's new<span class="dot" id="newDot" hidden aria-label="New updates"></span></button>
+  </footer>
 </div>
+
+<dialog id="clDialog" class="fb" aria-labelledby="clTitle">
+  <form method="dialog" style="display:grid;gap:14px">
+    <h2 id="clTitle">What's new</h2>
+    <div class="cl" id="clList"></div>
+    <div class="row"><button class="btn" type="submit">Close</button></div>
+  </form>
+</dialog>
 
 <dialog id="fbDialog" class="fb" aria-labelledby="fbTitle">
   <form id="fbForm" novalidate>
@@ -275,8 +300,42 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
 <div id="toast" class="toast" hidden role="status"></div>
 
 <script>
+/* ============================ RELEASES ============================
+   Add a new entry at the TOP for each release. The footer shows the
+   first entry's version. NEEDS_DB is the lowest setup.sql version this
+   page works with: raise it whenever a release changes setup.sql, and
+   bump db_version() in setup.sql to match. */
+const CHANGELOG = [
+  { v: "2.1", date: "2026-10-27", items: [
+    "Version number and this What's new panel",
+    "The site now warns if it was updated without updating the database" ] },
+  { v: "2.0", date: "2026-10-27", items: [
+    "Drag photos from Finder or the desktop onto the page, or pick several at once",
+    "Private notes for the photographer when voting, shown after Monday's reveal",
+    "Send feedback: suggestions and bug reports go to the admins" ] },
+  { v: "1.0", date: "2026-10-27", items: [
+    "First release: submit up to 4 photos, rate 0–7 stars, weekly winner" ] }
+];
+const NEEDS_DB = "2.1";
+/* ================================================================== */
 (() => {
 const CFG = window.POTW_CONFIG, DOMAIN = CFG.EMAIL_DOMAIN.toLowerCase();
+const VERSION = CHANGELOG[0].v;
+
+/* ---------- version footer & what's new (works even before sign-in) ---------- */
+const byId = id => document.getElementById(id);
+const escH = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+byId("ver").textContent = "v" + VERSION;
+let seen = null; try { seen = localStorage.getItem("potw-seen-version"); } catch {}
+byId("newDot").hidden = seen === VERSION;
+byId("openChangelog").addEventListener("click", () => {
+  byId("clList").innerHTML = CHANGELOG.map(r => `<section><h3>v${escH(r.v)} <small>${escH(new Date(r.date + "T12:00:00Z").toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric", timeZone:"UTC" }))}</small></h3>
+    <ul>${r.items.map(i => `<li>${escH(i)}</li>`).join("")}</ul></section>`).join("");
+  const d = byId("clDialog"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  try { localStorage.setItem("potw-seen-version", VERSION); } catch {}
+  byId("newDot").hidden = true;
+});
+const verNum = v => String(v || "0").split(".").map(Number).reduce((a, n, i) => a + n / Math.pow(1000, i), 0);
 const MAX = 4, LONG_EDGE = 2560;
 const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
 const $ = id => document.getElementById(id);
@@ -352,8 +411,19 @@ $("nameForm").addEventListener("submit", async e => {
 });
 
 /* ---------- data ---------- */
+let dbChecked = false;
+async function checkDb(){
+  if (dbChecked) return; dbChecked = true;
+  const { data, error } = await sb.rpc("db_version");
+  const have = error ? null : data;
+  if (have && verNum(have) >= verNum(NEEDS_DB)) return;
+  const b = $("syncBanner");
+  b.textContent = `The site was updated to v${VERSION}, but the database ${have ? `is still on v${have}` : "hasn't been updated yet"}. Some features may not work until an admin runs the latest setup.sql in Supabase.`;
+  b.hidden = false;
+}
 async function load(){
   if (!S.user || S.loading) return;
+  checkDb();
   S.loading = true;
   try {
     const [w, win, notes] = await Promise.all([sb.rpc("get_week"), sb.rpc("get_winners"), sb.rpc("get_my_notes")]);

@@ -115,6 +115,27 @@ Send the team the GitHub Pages link. They sign in with their @kent.edu email, en
 
 ---
 
+## Features
+- **Drag and drop.** During submission days, drag photos from Finder or the desktop anywhere onto the page, or pick several at once in the file picker. They fill your open slots. Use **Submit all** to upload them in one go. HEIC and RAW files are skipped; export them as JPG first.
+- **Notes when voting.** Under each photo there's an optional note for the photographer, up to 280 characters. Notes go only to that photographer, without the voter's name, and appear in **Notes on your photos** after Monday's reveal.
+- **Send feedback.** A link next to your name opens a form for suggestions and bug reports. Bug reports automatically include the browser and the current stage. Admins see everything in a **Feedback inbox** inside the Admin box, with the sender's name and email, and can mark items done.
+
+## Updating an existing install
+When you get a new version:
+1. Run the new `supabase/setup.sql` in the **SQL Editor**. It upgrades in place and keeps all photos, votes and names.
+2. Upload the new `index.html` to GitHub. Copy your two config values (`SUPABASE_URL`, `SUPABASE_KEY`) into it first.
+
+Do it in that order. If you forget step 1, the site shows everyone a yellow banner saying the database needs updating, instead of failing with random errors.
+
+## Making your own release
+1. In `index.html`, add an entry to the **top** of `CHANGELOG`, e.g.
+   `{ v: "2.2", date: "2026-11-10", items: ["Bigger photo previews"] },`
+   The footer version and the "What's new" dot update from this automatically.
+2. Only if you changed `setup.sql`: bump the number in `db_version()` to the new version, set `NEEDS_DB` in `index.html` to the same number, and run `setup.sql` before uploading the page.
+3. Commit and push. Teammates see a gold dot next to **What's new** until they open it.
+
+Use `2.2` for small changes and `3.0` for big ones. Pure visual or wording changes don't touch `NEEDS_DB`.
+
 ## Good to know
 - **Photo size.** Uploads are resized in the browser to 2560px on the long side (JPEG, quality 90) to stay inside the free 1 GB of storage. For the Instagram post, get the original file from the winning photographer.
 - **Photo links are public.** Anyone holding a photo's link can view it. Links are random and never reveal who uploaded the photo.
