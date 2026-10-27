@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>UCM Photo of the Week</title>
+<meta name="description" content="Kent State UCM photo team's weekly Photo of the Week contest.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<script>
+/* ===================== SETUP: paste your Supabase values here =====================
+   Supabase → Project Settings → API (or "API Keys").
+   SUPABASE_KEY is the "anon public" key (or the "publishable" key, sb_publishable_…).
+   Never put the service_role / secret key in this file. */
+window.POTW_CONFIG = {
+  SUPABASE_URL: "https://YOUR-PROJECT-REF.supabase.co",
+  SUPABASE_KEY: "YOUR-ANON-OR-PUBLISHABLE-KEY",
+  EMAIL_DOMAIN: "kent.edu"
+};
+/* ================================================================================ */
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+/* Layout: a contact sheet. Masthead + weekly schedule rail, then last week's winner as the big print, then this week's sheet, then the archive strip. */
+:root{
+  color-scheme:light;
+  --bg:#f3f5f9; --surface:#ffffff; --ink:#0e1a33; --muted:#566381; --line:#d6dbe6;
+  --navy:#002664; --navy-ink:#ffffff; --gold:#eaab00; --gold-ink:#7a5800; --gold-soft:#fff3cf;
+  --ok:#1d7a4a; --bad:#b3261e; --shade:rgba(8,14,30,.86);
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0a1020; --surface:#121a2d; --ink:#e7ebf4; --muted:#93a0bc; --line:#25314a;
+  --navy:#8fb0ee; --navy-ink:#0a1020; --gold:#f2c14a; --gold-ink:#f2c14a; --gold-soft:#2b2512;
+  --ok:#5cc98d; --bad:#ff8a80; --shade:rgba(0,0,0,.9); color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);margin:0}
+body{font-family:var(--body);font-size:16px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(28px + env(safe-area-inset-top,0px)) calc(64px + env(safe-area-inset-bottom,0px))}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:44px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.005em}
+.eyebrow{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,label.pick:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.btn{border:0;border-radius:6px;padding:10px 16px;font-weight:700;background:var(--navy);color:var(--navy-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.gold{background:var(--gold);color:#1a1300}
+.note{color:var(--muted);font-size:15px;max-width:62ch;margin:0}
+.field{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);width:100%}
+
+/* masthead */
+.mast{display:grid;gap:18px}
+.topline{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:baseline}
+.who{font-size:14px;color:var(--muted)}
+.who button{background:none;border:0;padding:0;color:var(--navy);text-decoration:underline;font-size:14px}
+.mast h1{font-size:clamp(44px,8vw,76px);text-transform:uppercase;color:var(--navy)}
+.mast h1 span{color:var(--gold-ink)}
+.rail{display:grid;grid-template-columns:4fr 3fr 1.4fr;border:1.5px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.rail div{padding:10px 14px;display:grid;gap:2px;border-right:1.5px solid var(--line);min-width:0}
+.rail div:last-child{border-right:0}
+.rail b{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.rail small{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.rail .now{background:var(--navy);color:var(--navy-ink)}
+.rail .now small{color:inherit;opacity:.8}
+.status{font-weight:600;margin:0}
+
+/* sign-in */
+.gate{max-width:440px;display:grid;gap:14px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:24px}
+.gate h2{font-size:30px;text-transform:uppercase}
+.gate form{display:grid;gap:10px}
+.gate label{font-weight:600}
+.err{color:var(--bad);font-weight:600;margin:0}
+
+/* winner print */
+.print{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;align-items:end}
+.print figure{margin:0;background:#000;border-radius:4px;overflow:hidden;box-shadow:0 0 0 10px var(--surface),0 0 0 11.5px var(--line)}
+.print figure button{all:unset;cursor:zoom-in;display:block}
+.print img{display:block;width:100%;max-height:640px;object-fit:contain}
+.print .cap{display:grid;gap:12px}
+.print h2{font-size:clamp(34px,5vw,52px);text-transform:uppercase}
+.badge{justify-self:start;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;background:var(--gold);color:#1a1300;padding:5px 10px;border-radius:3px}
+.score{font-family:var(--display);font-size:56px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--gold-ink)}
+.score small{font-size:22px;color:var(--muted)}
+.by{font-weight:600;font-size:18px}
+.empty{border:1.5px dashed var(--line);border-radius:8px;padding:28px;display:grid;gap:8px;background:var(--surface)}
+.empty h3{font-size:26px;text-transform:uppercase}
+
+.sh{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:18px}
+.sh h2{font-size:34px;text-transform:uppercase}
+.lead{margin-bottom:16px}
+
+/* contact sheet */
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.frame{background:var(--surface);border:1.5px solid var(--line);border-radius:6px;overflow:hidden;display:grid;grid-template-rows:auto 1fr;min-width:0}
+.frame .ph{position:relative;aspect-ratio:4/3;background:#0b0f19;max-width:100%}
+.frame .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .ph button.zoom{position:absolute;inset:0;background:transparent;border:0;padding:0;cursor:zoom-in}
+.fr{position:absolute;left:8px;top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;background:rgba(0,0,0,.6);color:#fff;padding:3px 7px;border-radius:3px;pointer-events:none}
+.frame .meta{padding:12px 14px;display:grid;gap:10px;align-content:start}
+.frame .t{font-weight:600;overflow-wrap:anywhere}
+.frame .t.dim{color:var(--muted);font-weight:400;font-style:italic}
+img.broken{opacity:0}
+
+/* slots */
+.slot{border:1.5px dashed var(--line);border-radius:6px;display:grid;place-items:center;min-height:230px;background:var(--surface);padding:16px;text-align:center}
+label.pick{display:grid;gap:6px;place-items:center;cursor:pointer;color:var(--muted);position:relative}
+label.pick b{font-family:var(--display);font-size:24px;text-transform:uppercase;color:var(--navy)}
+label.pick input{position:absolute;opacity:0;width:1px;height:1px}
+.pending{display:grid;gap:10px;width:100%;text-align:left}
+.pending img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.link{background:none;border:0;padding:0;color:var(--bad);font-size:14px;text-decoration:underline;justify-self:start}
+
+/* rating */
+.rate{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.rate button{border:0;background:none;padding:3px;border-radius:4px;line-height:0}
+.rate .z{font-family:var(--mono);font-size:12px;line-height:1;padding:6px 7px;margin-right:4px;border:1.5px solid var(--line);border-radius:4px;color:var(--muted)}
+.rate .z.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.rate svg{width:22px;height:22px;fill:transparent;stroke:var(--muted);stroke-width:1.6}
+.rate .s.on svg{fill:var(--gold);stroke:var(--gold)}
+.rate .rv{margin-left:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);min-width:3ch;text-align:right}
+.rate button:disabled{cursor:default}
+.ballotbar{position:sticky;bottom:max(12px,env(safe-area-inset-bottom,0px));margin-top:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.ballotbar .prog{font-weight:600;font-variant-numeric:tabular-nums}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.done{color:var(--ok);font-weight:700}
+
+/* results */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+th.num,td.num{text-align:right}
+td img{width:56px;height:42px;object-fit:cover;border-radius:3px;display:block}
+tr.win td{background:var(--gold-soft)}
+
+.arch{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.arch .frame .meta{gap:2px}
+.arch .wk{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+
+.tools{border:1.5px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--surface)}
+.tools select{font:inherit;padding:6px 8px;border-radius:5px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+
+.lb{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));cursor:zoom-out}
+.lb img{max-width:100%;max-height:92vh;object-fit:contain}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.toast.err{background:var(--bad);color:#fff}
+
+@media (max-width:760px){
+  .print{grid-template-columns:1fr}
+  .rail{grid-template-columns:1fr}
+  .rail div{border-right:0;border-bottom:1.5px solid var(--line)}
+  .rail div:last-child{border-bottom:0}
+}
+@media (prefers-reduced-motion:no-preference){.frame{transition:border-color .15s}.frame:hover{border-color:var(--muted)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="topline">
+      <div class="eyebrow">Kent State · University Communications &amp; Marketing · Photo Team</div>
+      <div class="who" id="who" hidden></div>
+    </div>
+    <h1>Photo of the <span>Week</span></h1>
+    <div class="rail" id="rail" aria-label="Weekly schedule">
+      <div data-p="submit"><small>Mon – Thu</small><b>Submit up to 4</b></div>
+      <div data-p="vote"><small>Fri – Sun</small><b>Rate 0–7 stars</b></div>
+      <div data-p="closed"><small>Next Mon</small><b>Winner</b></div>
+    </div>
+    <p class="status" id="status"></p>
+  </header>
+
+  <!-- sign-in -->
+  <section id="gate" class="gate" hidden aria-label="Sign in">
+    <h2>Sign in</h2>
+    <form id="emailForm" novalidate>
+      <label for="email">Your Kent State email</label>
+      <input class="field" id="email" type="email" autocomplete="email" placeholder="flash@kent.edu" required>
+      <button class="btn" type="submit" id="emailBtn">Email me a sign-in code</button>
+    </form>
+    <form id="codeForm" hidden novalidate>
+      <label for="code">Enter the code we sent to <span id="sentTo"></span></label>
+      <input class="field" id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="10" placeholder="123456" required>
+      <div class="row"><button class="btn" type="submit" id="codeBtn">Sign in</button><button class="btn ghost" type="button" id="backBtn">Use a different email</button></div>
+      <p class="note">Check your spam or quarantine folder if it doesn't arrive within a minute.</p>
+    </form>
+    <p class="err" id="gateErr" role="alert"></p>
+  </section>
+
+  <!-- first-time name -->
+  <section id="nameStep" class="gate" hidden aria-label="Your name">
+    <h2>Welcome</h2>
+    <p class="note">How should your name appear when one of your photos wins?</p>
+    <form id="nameForm" novalidate>
+      <label for="displayName">Name</label>
+      <input class="field" id="displayName" maxlength="60" autocomplete="name" placeholder="First Last" required>
+      <button class="btn" type="submit">Continue</button>
+    </form>
+    <p class="err" id="nameErr" role="alert"></p>
+  </section>
+
+  <div id="app" class="wrap" hidden>
+    <section id="winner" aria-label="Latest winner"></section>
+    <section id="current" aria-label="This week"></section>
+    <section id="results" aria-label="Full results" hidden></section>
+    <section id="history" aria-label="Past winners" hidden></section>
+    <section id="tools" class="tools" hidden aria-label="Admin tools"></section>
+  </div>
+</div>
+
+<div id="lb" class="lb" hidden role="dialog" aria-label="Photo preview"><img alt=""></div>
+<div id="toast" class="toast" hidden role="status"></div>
+
+<script>
+(() => {
+const CFG = window.POTW_CONFIG, DOMAIN = CFG.EMAIL_DOMAIN.toLowerCase();
+const MAX = 4, LONG_EDGE = 2560;
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+if (!window.supabase || CFG.SUPABASE_URL.includes("YOUR-PROJECT")) {
+  $("status").textContent = "This site isn't connected yet. Add the Supabase URL and key at the top of index.html (see README).";
+  return;
+}
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+const S = { user:null, wk:null, winners:[], results:[], resultsWeek:null,
+  draft:{}, pending:{}, confirming:false, busy:false, loading:false };
+
+/* ---------- helpers ---------- */
+function toast(msg, err){
+  const t = $("toast"); t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 4200);
+}
+const errMsg = (e, fallback) => (e && (e.message || e.error_description)) || fallback;
+const url = path => sb.storage.from("photos").getPublicUrl(path).data.publicUrl;
+const img = (path, alt) => `<img src="${esc(url(path))}" alt="${esc(alt || "Submitted photo")}" loading="lazy">`;
+function weekLabel(wk){
+  const s = new Date(wk + "T12:00:00Z"), e = new Date(s); e.setUTCDate(e.getUTCDate() + 6);
+  const f = d => d.toLocaleDateString("en-US", { month:"short", day:"numeric", timeZone:"UTC" });
+  return `${f(s)} – ${f(e)}`;
+}
+function hash(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function loadDraft(wk){ try { return JSON.parse(localStorage.getItem("potw-draft-" + wk)) || {}; } catch { return {}; } }
+function saveDraft(wk){ try { localStorage.setItem("potw-draft-" + wk, JSON.stringify(S.draft[wk] || {})); } catch {} }
+function show(view){ $("gate").hidden = view !== "gate"; $("nameStep").hidden = view !== "name"; $("app").hidden = view !== "app"; }
+
+/* ---------- sign-in ---------- */
+let pendingEmail = "";
+$("emailForm").addEventListener("submit", async e => {
+  e.preventDefault(); $("gateErr").textContent = "";
+  const email = $("email").value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+$/.test(email)) return $("gateErr").textContent = "Enter your full email address.";
+  if (email.split("@")[1] !== DOMAIN) return $("gateErr").textContent = `Use your @${DOMAIN} email address.`;
+  $("emailBtn").disabled = true; $("emailBtn").textContent = "Sending…";
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  $("emailBtn").disabled = false; $("emailBtn").textContent = "Email me a sign-in code";
+  if (error) return $("gateErr").textContent = /rate|too many/i.test(error.message)
+    ? "Too many codes requested. Wait a few minutes and try again."
+    : errMsg(error, "Couldn't send the code. Try again.");
+  pendingEmail = email; $("sentTo").textContent = email;
+  $("emailForm").hidden = true; $("codeForm").hidden = false; $("code").focus();
+});
+$("codeForm").addEventListener("submit", async e => {
+  e.preventDefault(); $("gateErr").textContent = "";
+  const token = $("code").value.replace(/\D/g, "");
+  if (token.length < 6) return $("gateErr").textContent = "Enter the code from the email.";
+  $("codeBtn").disabled = true;
+  const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type: "email" });
+  $("codeBtn").disabled = false;
+  if (error) return $("gateErr").textContent = "That code didn't work. Check it, or request a new one.";
+});
+$("backBtn").addEventListener("click", () => { $("codeForm").hidden = true; $("emailForm").hidden = false; $("code").value = ""; $("gateErr").textContent = ""; });
+$("nameForm").addEventListener("submit", async e => {
+  e.preventDefault(); $("nameErr").textContent = "";
+  const { error } = await sb.rpc("set_my_name", { p_name: $("displayName").value });
+  if (error) return $("nameErr").textContent = errMsg(error, "Couldn't save your name.");
+  load();
+});
+
+/* ---------- data ---------- */
+async function load(){
+  if (!S.user || S.loading) return;
+  S.loading = true;
+  try {
+    const [w, win] = await Promise.all([sb.rpc("get_week"), sb.rpc("get_winners")]);
+    if (w.error) throw w.error;
+    S.wk = w.data; S.winners = win.data || [];
+    if (!S.draft[S.wk.week]) S.draft[S.wk.week] = loadDraft(S.wk.week);
+    const latest = S.winners[0]?.week;
+    if (latest && latest !== S.resultsWeek){
+      const r = await sb.rpc("get_results", { w: latest });
+      if (!r.error){ S.results = r.data || []; S.resultsWeek = latest; }
+    } else if (!latest) { S.results = []; S.resultsWeek = null; }
+    if (!S.wk.me){ show("name"); $("displayName").focus(); return; }
+    show("app"); render();
+  } catch (e) {
+    $("status").textContent = errMsg(e, "Couldn't load this week's sheet.") + " Reload to try again.";
+  } finally { S.loading = false; }
+}
+
+/* ---------- render ---------- */
+function render(){
+  const a = document.activeElement;
+  if (a && a.matches("#current input[type=text]")) { a.addEventListener("blur", render, { once:true }); return; }
+  const w = S.wk; if (!w) return;
+  $("who").hidden = false;
+  $("who").innerHTML = `Signed in as <strong>${esc(w.me)}</strong> · <button type="button" id="signOut">Sign out</button>`;
+  document.querySelectorAll("#rail div").forEach(d => d.classList.toggle("now", d.dataset.p === w.stage));
+  const n = w.total;
+  $("status").textContent = {
+    submit:`Week of ${weekLabel(w.week)} · Submissions are open until Thursday 11:59 PM · ${n} photo${n===1?"":"s"} in from ${w.photographers} photographer${w.photographers===1?"":"s"}`,
+    vote:`Week of ${weekLabel(w.week)} · Voting is open until Sunday 11:59 PM · ${w.voters} ballot${w.voters===1?"":"s"} in`,
+    closed:`Week of ${weekLabel(w.week)} · Voting is closed for this week`
+  }[w.stage] || `Week of ${weekLabel(w.week)}`;
+  renderWinner(); renderCurrent(); renderHistory(); renderTools();
+}
+function renderWinner(){
+  const el = $("winner"), res = $("results"), w = S.winners[0];
+  if (!w){
+    el.innerHTML = `<div class="empty"><h3>No winner yet</h3><p class="note">The first Photo of the Week appears here once a week of voting closes. Ratings stay sealed until then.</p></div>`;
+    res.hidden = true; return;
+  }
+  el.innerHTML = `<div class="print">
+    <figure><button type="button" data-zoom="${esc(w.path)}" aria-label="View larger">${img(w.path, w.title || "Winning photo")}</button></figure>
+    <div class="cap">
+      <span class="badge">Photo of the Week · ${esc(weekLabel(w.week))}</span>
+      <h2>${w.title ? esc(w.title) : "Untitled frame"}</h2>
+      <div class="by">${esc(w.photographer)}</div>
+      <div class="score">${Number(w.avg_stars).toFixed(2)} <small>/ 7 avg · ${w.ratings} rating${w.ratings===1?"":"s"}</small></div>
+      <p class="note">${w.tied ? "Tied with another photo on every tiebreaker; the earlier submission is shown. Settle it as a team." : "Ready for the UCM Instagram. Get the full-resolution file from the photographer."}</p>
+    </div></div>`;
+  if (!S.results.length){ res.hidden = true; return; }
+  res.hidden = false;
+  res.innerHTML = `<div class="sh"><h2>Full results</h2><span class="eyebrow">${esc(weekLabel(S.resultsWeek))} · ${S.results[0].voters} ballot${S.results[0].voters===1?"":"s"}</span></div>
+    <div class="tbl"><table><thead><tr><th>#</th><th>Photo</th><th>Title</th><th>Photographer</th><th class="num">Avg</th><th class="num">Ratings</th><th class="num">7s</th></tr></thead><tbody>
+    ${S.results.map(r => `<tr class="${r.photo_id === w.photo_id ? "win" : ""}"><td>${r.place}</td><td>${img(r.path, r.title)}</td><td>${esc(r.title || "Untitled")}</td><td>${esc(r.photographer)}</td><td class="num">${r.avg_stars == null ? "–" : Number(r.avg_stars).toFixed(2)}</td><td class="num">${r.ratings}</td><td class="num">${r.sevens}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+function renderHistory(){
+  const el = $("history"), past = S.winners.slice(1);
+  if (!past.length){ el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="sh"><h2>Past winners</h2><span class="eyebrow">${past.length} week${past.length===1?"":"s"}</span></div>
+    <div class="arch">${past.map(w => `<article class="frame"><div class="ph">${img(w.path, w.title)}<button type="button" class="zoom" data-zoom="${esc(w.path)}" aria-label="View larger"></button></div>
+    <div class="meta"><span class="wk">${esc(weekLabel(w.week))}</span><span class="t">${esc(w.title || "Untitled")}</span><span class="note">${esc(w.photographer)} · ${Number(w.avg_stars).toFixed(2)}</span></div></article>`).join("")}</div>`;
+}
+function stars(id, val, locked){
+  const v = val ?? -1;
+  let h = `<div class="rate" role="radiogroup" aria-label="Rating, 0 to 7 stars">`;
+  h += `<button type="button" class="z ${v===0?"on":""}" role="radio" aria-checked="${v===0}" aria-label="0 stars" data-k="${esc(id)}" data-v="0" ${locked?"disabled":""}>0</button>`;
+  for (let i = 1; i <= 7; i++) h += `<button type="button" class="s ${i<=v?"on":""}" role="radio" aria-checked="${i===v}" aria-label="${i} star${i>1?"s":""}" data-k="${esc(id)}" data-v="${i}" ${locked?"disabled":""}>${STAR}</button>`;
+  return h + `<span class="rv">${v < 0 ? "–" : v}/7</span></div>`;
+}
+function renderCurrent(){
+  const w = S.wk, el = $("current");
+  if (w.stage === "submit") return renderSubmit(el, w);
+  if (w.stage === "vote") return renderVote(el, w);
+  el.innerHTML = `<div class="sh"><h2>This week</h2><span class="eyebrow">${esc(weekLabel(w.week))}</span></div>
+    <div class="empty"><h3>Voting is closed</h3><p class="note">${w.total ? "This week's winner is shown above." : "No photos were submitted this week."}</p></div>`;
+}
+function renderSubmit(el, w){
+  const mine = w.photos.filter(p => p.mine);
+  let slots = "";
+  mine.forEach((p, i) => {
+    slots += `<article class="frame"><div class="ph">${img(p.path, p.title)}<span class="fr">YOURS · ${i+1}/${MAX}</span><button type="button" class="zoom" data-zoom="${esc(p.path)}" aria-label="View larger"></button></div>
+      <div class="meta"><span class="t ${p.title ? "" : "dim"}">${esc(p.title || "No title")}</span><button type="button" class="link" data-remove="${esc(p.id)}" ${S.busy!==false?"disabled":""}>Remove</button></div></article>`;
+  });
+  for (let i = mine.length; i < MAX; i++){
+    const pend = S.pending[i];
+    if (pend){
+      slots += `<div class="slot"><div class="pending"><img src="${esc(pend.url)}" alt="Selected photo preview">
+        <label class="eyebrow" for="cap-${i}">Title (optional)</label>
+        <input class="field" type="text" id="cap-${i}" maxlength="80" placeholder="e.g. Homecoming fireworks over Risman" value="${esc(pend.caption)}" data-cap="${i}">
+        <div class="row"><button type="button" class="btn" data-upload="${i}" ${S.busy!==false?"disabled":""}>${S.busy===i?"Uploading…":"Submit photo"}</button><button type="button" class="btn ghost" data-cancel="${i}" ${S.busy!==false?"disabled":""}>Cancel</button></div></div></div>`;
+    } else {
+      slots += `<div class="slot"><label class="pick" for="file-${i}"><b>Add photo</b><span>Slot ${i+1} of ${MAX} · JPG, PNG or WebP</span>
+        <input type="file" id="file-${i}" accept="image/jpeg,image/png,image/webp" data-file="${i}"></label></div>`;
+    }
+  }
+  el.innerHTML = `<div class="sh"><h2>Your submissions</h2><span class="eyebrow">${mine.length} of ${MAX} used · ${w.total - mine.length} from teammates</span></div>
+    <p class="note lead">Pick up to four frames from this week. Voting opens Friday and is anonymous: nobody sees who shot what until Monday's reveal. Teammates' photos stay hidden until then too.</p>
+    <div class="sheet">${slots}</div>`;
+}
+function renderVote(el, w){
+  const voted = w.voted, draft = S.draft[w.week] ||= {};
+  const pool = w.photos.filter(p => !p.mine).sort((a, b) => hash(S.user.id + a.id) - hash(S.user.id + b.id));
+  const mineCount = w.photos.length - pool.length;
+  const val = id => voted ? w.my_ratings[id] : draft[id];
+  const rated = pool.filter(p => val(p.id) !== undefined).length;
+  const frames = pool.map((p, i) => `<article class="frame"><div class="ph">${img(p.path, p.title)}<span class="fr">NO. ${String(i+1).padStart(2,"0")}</span><button type="button" class="zoom" data-zoom="${esc(p.path)}" aria-label="View photo ${i+1} larger"></button></div>
+     <div class="meta"><span class="t ${p.title ? "" : "dim"}">${esc(p.title || "No title")}</span>${stars(p.id, val(p.id), voted)}</div></article>`).join("");
+  let bar = "";
+  if (voted) bar = `<div class="ballotbar"><span class="done">✓ Your ballot is in for this week</span><span class="note">Results post Monday.</span></div>`;
+  else if (pool.length) bar = `<div class="ballotbar"><span class="prog">${rated} of ${pool.length} rated</span>
+     ${S.confirming ? `<span class="confirm"><span>Submit now? You can't change it this week.</span><button type="button" class="btn gold" data-cast ${S.busy!==false?"disabled":""}>${S.busy?"Saving…":"Yes, submit ballot"}</button><button type="button" class="btn ghost" data-unconfirm>Keep editing</button></span>`
+                    : `<button type="button" class="btn" data-confirm ${rated < pool.length ? "disabled" : ""}>${rated < pool.length ? "Rate every photo to submit" : "Submit ballot"}</button>`}</div>`;
+  el.innerHTML = `<div class="sh"><h2>Rate this week's sheet</h2><span class="eyebrow">${pool.length} photo${pool.length===1?"":"s"} · names hidden until Monday</span></div>
+    <p class="note lead">Give every photo 0 to 7 stars, then submit once. ${mineCount ? `Your own ${mineCount===1 ? "photo is" : mineCount + " photos are"} left off your ballot. ` : ""}Highest average wins; ties go to the most 7-star ratings.</p>
+    ${pool.length ? `<div class="sheet">${frames}</div>` : `<div class="empty"><h3>Nothing to rate</h3><p class="note">${w.photos.length ? "The only photos this week are yours." : "No photos were submitted this week."}</p></div>`}
+    ${bar}`;
+}
+function renderTools(){
+  const el = $("tools"), w = S.wk;
+  if (!w.is_admin){ el.hidden = true; return; }
+  el.hidden = false;
+  const ov = w.override || "auto";
+  el.innerHTML = `<span class="eyebrow">Admin</span>
+    <label for="ov">This week's stage</label>
+    <select id="ov"><option value="auto" ${ov==="auto"?"selected":""}>Follow the schedule</option><option value="submit" ${ov==="submit"?"selected":""}>Force submissions open</option><option value="vote" ${ov==="vote"?"selected":""}>Force voting open</option><option value="closed" ${ov==="closed"?"selected":""}>Close and reveal winner</option></select>
+    <span class="note">For holiday weeks, or to close early once everyone has voted.</span>`;
+}
+
+/* ---------- actions ---------- */
+async function prepare(file){
+  let bmp;
+  try { bmp = await createImageBitmap(file); }
+  catch { throw new Error("That file couldn't be read. Export it as a JPG and try again."); }
+  const scale = Math.min(1, LONG_EDGE / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("Couldn't prepare the photo.")), "image/jpeg", 0.9));
+}
+async function upload(i){
+  const pend = S.pending[i]; if (!pend || S.busy !== false) return;
+  S.busy = i; render();
+  const path = `${S.wk.week}/${crypto.randomUUID()}.jpg`;
+  let uploaded = false;
+  try {
+    const blob = await prepare(pend.file);
+    const up = await sb.storage.from("photos").upload(path, blob, { contentType:"image/jpeg", upsert:false, cacheControl:"31536000" });
+    if (up.error) throw up.error;
+    uploaded = true;
+    const { error } = await sb.rpc("submit_photo", { p_path: path, p_title: pend.caption || "" });
+    if (error) throw error;
+    URL.revokeObjectURL(pend.url); delete S.pending[i];
+    toast("Photo submitted");
+  } catch (e) {
+    if (uploaded) sb.storage.from("photos").remove([path]).catch(() => {});
+    toast(/row-level security/i.test(e?.message || "") ? "Submissions are closed for this week." : errMsg(e, "Upload failed. Try again."), true);
+  } finally { S.busy = false; await load(); render(); }
+}
+async function removePhoto(id){
+  if (S.busy !== false) return; S.busy = true; render();
+  try {
+    const { data: path, error } = await sb.rpc("remove_photo", { p_id: id });
+    if (error) throw error;
+    await sb.storage.from("photos").remove([path]);
+    toast("Photo removed");
+  } catch (e) { toast(errMsg(e, "Couldn't remove that photo."), true); }
+  finally { S.busy = false; await load(); render(); }
+}
+async function castBallot(){
+  const w = S.wk; if (S.busy !== false) return;
+  const draft = S.draft[w.week] || {}, pool = w.photos.filter(p => !p.mine);
+  if (pool.some(p => draft[p.id] === undefined)) return toast("Rate every photo first.", true);
+  S.busy = true; render();
+  try {
+    const ratings = {}; pool.forEach(p => ratings[p.id] = draft[p.id]);
+    const { error } = await sb.rpc("cast_ballot", { p_ratings: ratings });
+    if (error) throw error;
+    S.confirming = false; toast("Ballot submitted");
+    try { localStorage.removeItem("potw-draft-" + w.week); } catch {}
+  } catch (e) { toast(errMsg(e, "Couldn't save your ballot. Try again."), true); }
+  finally { S.busy = false; await load(); render(); }
+}
+async function setStage(v){
+  const { error } = await sb.rpc("set_stage", { w: S.wk.week, p_stage: v });
+  if (error) toast(errMsg(error, "Couldn't change the stage."), true); else toast("Stage updated");
+  S.resultsWeek = null; load();
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "signOut") { sb.auth.signOut(); return; }
+  if (b.dataset.zoom){ const lb = $("lb"); lb.querySelector("img").src = url(b.dataset.zoom); lb.hidden = false; return; }
+  if (b.dataset.k !== undefined && b.dataset.v !== undefined){
+    const wk = S.wk.week; (S.draft[wk] ||= {})[b.dataset.k] = +b.dataset.v; saveDraft(wk); S.confirming = false; render(); return;
+  }
+  if (b.dataset.upload !== undefined) return upload(+b.dataset.upload);
+  if (b.dataset.cancel !== undefined){ const p = S.pending[+b.dataset.cancel]; if (p) URL.revokeObjectURL(p.url); delete S.pending[+b.dataset.cancel]; return render(); }
+  if (b.dataset.remove !== undefined) return removePhoto(b.dataset.remove);
+  if (b.hasAttribute("data-confirm")){ S.confirming = true; return render(); }
+  if (b.hasAttribute("data-unconfirm")){ S.confirming = false; return render(); }
+  if (b.hasAttribute("data-cast")) return castBallot();
+});
+$("lb").addEventListener("click", () => $("lb").hidden = true);
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("lb").hidden = true; });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset?.file !== undefined && t.files?.[0]){
+    const f = t.files[0];
+    if (f.size > 80 * 1024 * 1024) return toast("That file is too large. Export a JPG and try again.", true);
+    S.pending[+t.dataset.file] = { file:f, url:URL.createObjectURL(f), caption:"" }; render();
+  }
+  if (t.id === "ov") setStage(t.value);
+});
+document.addEventListener("input", e => { const t = e.target; if (t.dataset?.cap !== undefined && S.pending[+t.dataset.cap]) S.pending[+t.dataset.cap].caption = t.value; });
+document.addEventListener("error", e => { if (e.target.tagName === "IMG") e.target.classList.add("broken"); }, true);
+setInterval(() => { if (!document.hidden) load(); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+
+/* ---------- boot ---------- */
+sb.auth.onAuthStateChange((event, session) => {
+  const u = session?.user || null;
+  const changed = (u?.id || null) !== (S.user?.id || null);
+  S.user = u;
+  if (!u){
+    S.wk = null; $("who").hidden = true; show("gate");
+    $("status").textContent = `Sign in with your @${DOMAIN} email to submit and vote.`;
+    $("codeForm").hidden = true; $("emailForm").hidden = false;
+    return;
+  }
+  if (changed) setTimeout(load, 0);
+});
+})();
+</script>
+</body>
+</html>
