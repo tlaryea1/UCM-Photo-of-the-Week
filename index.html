@@ -146,6 +146,46 @@ tr.win td{background:var(--gold-soft)}
 .tools{border:1.5px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--surface)}
 .tools select{font:inherit;padding:6px 8px;border-radius:5px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
 
+/* comments on the ballot */
+.cmt{display:grid;gap:4px}
+.cmt textarea{font:inherit;font-size:14px;line-height:1.4;padding:8px 10px;border:1.5px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);width:100%;resize:vertical;min-height:2.6em}
+.cmt .cnt{font-family:var(--mono);font-size:11px;color:var(--muted);justify-self:end;font-variant-numeric:tabular-nums}
+.cmt-done{font-size:14px;color:var(--muted);border-left:3px solid var(--line);padding-left:10px;margin:0;overflow-wrap:anywhere}
+
+/* notes on your photos */
+.notes{display:grid;gap:18px}
+.note-card{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;background:var(--surface);border:1.5px solid var(--line);border-radius:6px;padding:14px}
+.note-card img{width:120px;aspect-ratio:4/3;object-fit:cover;border-radius:4px;display:block}
+.note-card ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.note-card li{display:grid;gap:2px;overflow-wrap:anywhere}
+.note-card .st{font-family:var(--mono);font-size:12px;color:var(--gold-ink);letter-spacing:.04em}
+@media (max-width:520px){.note-card{grid-template-columns:1fr}.note-card img{width:100%}}
+
+/* drag & drop */
+.dropveil{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:color-mix(in srgb,var(--navy) 18%,transparent);border:3px dashed var(--navy);pointer-events:none}
+.dropveil span{font-family:var(--display);font-size:clamp(28px,5vw,44px);font-weight:700;text-transform:uppercase;background:var(--surface);color:var(--navy);padding:14px 22px;border-radius:8px}
+.hint{font-size:14px;color:var(--muted)}
+
+/* feedback dialog + inbox */
+.linkbtn{background:none;border:0;padding:0;color:var(--navy);text-decoration:underline;font-size:14px}
+dialog.fb{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:22px;width:min(520px,calc(100% - 32px))}
+dialog.fb::backdrop{background:var(--shade)}
+dialog.fb form{display:grid;gap:12px}
+dialog.fb h2{font-size:28px;text-transform:uppercase}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg label{display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+.seg label:has(input:checked){border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)}
+dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%;min-height:140px;resize:vertical}
+.inbox{flex-basis:100%;display:grid;gap:10px;border-top:1.5px solid var(--line);padding-top:12px}
+.inbox-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.fbitem{display:grid;gap:4px;padding:10px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg)}
+.fbitem.done{opacity:.6}
+.fbitem .top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:13px;color:var(--muted)}
+.fbitem .body{white-space:pre-wrap;overflow-wrap:anywhere}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--line);color:var(--ink)}
+.tag.bug{background:var(--bad);color:#fff}
+.tag.idea{background:var(--gold);color:#1a1300}
+
 .lb{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));cursor:zoom-out}
 .lb img{max-width:100%;max-height:92vh;object-fit:contain}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
@@ -209,11 +249,28 @@ tr.win td{background:var(--gold-soft)}
     <section id="winner" aria-label="Latest winner"></section>
     <section id="current" aria-label="This week"></section>
     <section id="results" aria-label="Full results" hidden></section>
+    <section id="notes" aria-label="Comments on your photos" hidden></section>
     <section id="history" aria-label="Past winners" hidden></section>
     <section id="tools" class="tools" hidden aria-label="Admin tools"></section>
   </div>
 </div>
 
+<dialog id="fbDialog" class="fb" aria-labelledby="fbTitle">
+  <form id="fbForm" novalidate>
+    <h2 id="fbTitle">Send feedback</h2>
+    <div class="seg" role="radiogroup" aria-label="Type">
+      <label><input type="radio" name="fbKind" id="fbKindIdea" value="idea" checked> Suggestion</label>
+      <label><input type="radio" name="fbKind" id="fbKindBug" value="bug"> Something's broken</label>
+    </div>
+    <label for="fbBody" class="eyebrow">Details</label>
+    <textarea id="fbBody" maxlength="2000" placeholder="What happened, or what would make this better? For bugs, say what you clicked and what you expected."></textarea>
+    <p class="note">Admins see your name with this. Your browser and the current stage are attached automatically to help with bugs.</p>
+    <p class="err" id="fbErr" role="alert"></p>
+    <div class="row"><button class="btn" type="submit" id="fbSend">Send</button><button class="btn ghost" type="button" id="fbCancel">Cancel</button></div>
+  </form>
+</dialog>
+
+<div id="dropveil" class="dropveil" hidden aria-hidden="true"><span>Drop photos to add them</span></div>
 <div id="lb" class="lb" hidden role="dialog" aria-label="Photo preview"><img alt=""></div>
 <div id="toast" class="toast" hidden role="status"></div>
 
@@ -231,8 +288,10 @@ if (!window.supabase || CFG.SUPABASE_URL.includes("YOUR-PROJECT")) {
 }
 const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
-const S = { user:null, wk:null, winners:[], results:[], resultsWeek:null,
-  draft:{}, pending:{}, confirming:false, busy:false, loading:false };
+const S = { user:null, wk:null, winners:[], results:[], resultsWeek:null, notes:[],
+  inbox:[], showDone:false, draft:{}, cdraft:{}, pending:[], confirming:false, busy:false, loading:false };
+const OK_TYPES = /^image\/(jpeg|png|webp)$/;
+const CMAX = 280;
 
 /* ---------- helpers ---------- */
 function toast(msg, err){
@@ -248,8 +307,15 @@ function weekLabel(wk){
   return `${f(s)} – ${f(e)}`;
 }
 function hash(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-function loadDraft(wk){ try { return JSON.parse(localStorage.getItem("potw-draft-" + wk)) || {}; } catch { return {}; } }
-function saveDraft(wk){ try { localStorage.setItem("potw-draft-" + wk, JSON.stringify(S.draft[wk] || {})); } catch {} }
+function loadDraft(wk, kind = "draft"){ try { return JSON.parse(localStorage.getItem(`potw-${kind}-${wk}`)) || {}; } catch { return {}; } }
+function saveDraft(wk){
+  try {
+    localStorage.setItem("potw-draft-" + wk, JSON.stringify(S.draft[wk] || {}));
+    localStorage.setItem("potw-cdraft-" + wk, JSON.stringify(S.cdraft[wk] || {}));
+  } catch {}
+}
+function clearDraft(wk){ try { localStorage.removeItem("potw-draft-" + wk); localStorage.removeItem("potw-cdraft-" + wk); } catch {} }
+const fmtDate = iso => new Date(iso).toLocaleString("en-US", { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
 function show(view){ $("gate").hidden = view !== "gate"; $("nameStep").hidden = view !== "name"; $("app").hidden = view !== "app"; }
 
 /* ---------- sign-in ---------- */
@@ -290,10 +356,15 @@ async function load(){
   if (!S.user || S.loading) return;
   S.loading = true;
   try {
-    const [w, win] = await Promise.all([sb.rpc("get_week"), sb.rpc("get_winners")]);
+    const [w, win, notes] = await Promise.all([sb.rpc("get_week"), sb.rpc("get_winners"), sb.rpc("get_my_notes")]);
     if (w.error) throw w.error;
-    S.wk = w.data; S.winners = win.data || [];
+    S.wk = w.data; S.winners = win.data || []; S.notes = notes.data || [];
     if (!S.draft[S.wk.week]) S.draft[S.wk.week] = loadDraft(S.wk.week);
+    if (!S.cdraft[S.wk.week]) S.cdraft[S.wk.week] = loadDraft(S.wk.week, "cdraft");
+    if (S.wk.is_admin){
+      const fb = await sb.rpc("get_feedback", { p_show_done: S.showDone });
+      if (!fb.error) S.inbox = fb.data || [];
+    }
     const latest = S.winners[0]?.week;
     if (latest && latest !== S.resultsWeek){
       const r = await sb.rpc("get_results", { w: latest });
@@ -309,10 +380,10 @@ async function load(){
 /* ---------- render ---------- */
 function render(){
   const a = document.activeElement;
-  if (a && a.matches("#current input[type=text]")) { a.addEventListener("blur", render, { once:true }); return; }
+  if (a && a.matches("#current input[type=text], #current textarea")) { a.addEventListener("blur", render, { once:true }); return; }
   const w = S.wk; if (!w) return;
   $("who").hidden = false;
-  $("who").innerHTML = `Signed in as <strong>${esc(w.me)}</strong> · <button type="button" id="signOut">Sign out</button>`;
+  $("who").innerHTML = `Signed in as <strong>${esc(w.me)}</strong> · <button type="button" id="openFeedback">Send feedback</button> · <button type="button" id="signOut">Sign out</button>`;
   document.querySelectorAll("#rail div").forEach(d => d.classList.toggle("now", d.dataset.p === w.stage));
   const n = w.total;
   $("status").textContent = {
@@ -320,7 +391,25 @@ function render(){
     vote:`Week of ${weekLabel(w.week)} · Voting is open until Sunday 11:59 PM · ${w.voters} ballot${w.voters===1?"":"s"} in`,
     closed:`Week of ${weekLabel(w.week)} · Voting is closed for this week`
   }[w.stage] || `Week of ${weekLabel(w.week)}`;
-  renderWinner(); renderCurrent(); renderHistory(); renderTools();
+  renderWinner(); renderCurrent(); renderNotes(); renderHistory(); renderTools();
+}
+function renderNotes(){
+  const el = $("notes");
+  if (!S.notes.length){ el.hidden = true; return; }
+  const groups = [];
+  for (const n of S.notes){
+    let g = groups.find(x => x.photo_id === n.photo_id);
+    if (!g){ g = { ...n, items:[] }; groups.push(g); }
+    g.items.push(n);
+  }
+  const recent = groups.slice(0, 8);
+  el.hidden = false;
+  el.innerHTML = `<div class="sh"><h2>Notes on your photos</h2><span class="eyebrow">Only you see these · names never shown</span></div>
+    <div class="notes">${recent.map(g => `<article class="note-card">
+      <button type="button" class="zoom" data-zoom="${esc(g.path)}" style="all:unset;cursor:zoom-in" aria-label="View larger">${img(g.path, g.title)}</button>
+      <div><div class="eyebrow">${esc(weekLabel(g.week))} · ${esc(g.title || "Untitled")}</div>
+      <ul>${g.items.map(i => `<li><span class="st">${"★".repeat(i.stars)}${"☆".repeat(7 - i.stars)} ${i.stars}/7</span><span>${esc(i.comment)}</span></li>`).join("")}</ul></div>
+    </article>`).join("")}</div>`;
 }
 function renderWinner(){
   const el = $("winner"), res = $("results"), w = S.winners[0];
@@ -373,37 +462,47 @@ function renderSubmit(el, w){
     slots += `<article class="frame"><div class="ph">${img(p.path, p.title)}<span class="fr">YOURS · ${i+1}/${MAX}</span><button type="button" class="zoom" data-zoom="${esc(p.path)}" aria-label="View larger"></button></div>
       <div class="meta"><span class="t ${p.title ? "" : "dim"}">${esc(p.title || "No title")}</span><button type="button" class="link" data-remove="${esc(p.id)}" ${S.busy!==false?"disabled":""}>Remove</button></div></article>`;
   });
-  for (let i = mine.length; i < MAX; i++){
-    const pend = S.pending[i];
-    if (pend){
-      slots += `<div class="slot"><div class="pending"><img src="${esc(pend.url)}" alt="Selected photo preview">
-        <label class="eyebrow" for="cap-${i}">Title (optional)</label>
-        <input class="field" type="text" id="cap-${i}" maxlength="80" placeholder="e.g. Homecoming fireworks over Risman" value="${esc(pend.caption)}" data-cap="${i}">
-        <div class="row"><button type="button" class="btn" data-upload="${i}" ${S.busy!==false?"disabled":""}>${S.busy===i?"Uploading…":"Submit photo"}</button><button type="button" class="btn ghost" data-cancel="${i}" ${S.busy!==false?"disabled":""}>Cancel</button></div></div></div>`;
-    } else {
-      slots += `<div class="slot"><label class="pick" for="file-${i}"><b>Add photo</b><span>Slot ${i+1} of ${MAX} · JPG, PNG or WebP</span>
-        <input type="file" id="file-${i}" accept="image/jpeg,image/png,image/webp" data-file="${i}"></label></div>`;
-    }
+  S.pending = S.pending.slice(0, MAX - mine.length);
+  S.pending.forEach((pend, j) => {
+    const k = pend.key, n = mine.length + j + 1;
+    slots += `<div class="slot"><div class="pending"><img src="${esc(pend.url)}" alt="Selected photo preview">
+      <label class="eyebrow" for="cap-${k}">Title (optional) · slot ${n} of ${MAX}</label>
+      <input class="field" type="text" id="cap-${k}" maxlength="80" placeholder="e.g. Homecoming fireworks over Risman" value="${esc(pend.caption)}" data-cap="${k}">
+      <div class="row"><button type="button" class="btn" data-upload="${k}" ${S.busy!==false?"disabled":""}>${S.busy===k?"Uploading…":"Submit photo"}</button><button type="button" class="btn ghost" data-cancel="${k}" ${S.busy!==false?"disabled":""}>Cancel</button></div></div></div>`;
+  });
+  const open = MAX - mine.length - S.pending.length;
+  for (let i = 0; i < open; i++){
+    const n = MAX - open + i + 1;
+    slots += `<div class="slot"><label class="pick" for="file-${n}"><b>Add photo</b><span>Slot ${n} of ${MAX} · JPG, PNG or WebP</span>
+      <input type="file" id="file-${n}" accept="image/jpeg,image/png,image/webp" multiple data-file></label></div>`;
   }
+  const many = S.pending.length > 1;
   el.innerHTML = `<div class="sh"><h2>Your submissions</h2><span class="eyebrow">${mine.length} of ${MAX} used · ${w.total - mine.length} from teammates</span></div>
-    <p class="note lead">Pick up to four frames from this week. Voting opens Friday and is anonymous: nobody sees who shot what until Monday's reveal. Teammates' photos stay hidden until then too.</p>
+    <p class="note lead">Pick up to four frames from this week. Voting opens Friday and is anonymous: nobody sees who shot what until Monday's reveal. Teammates' photos stay hidden until then too.${open ? ` <span class="hint">You can also drag photos from Finder or your desktop anywhere onto this page.</span>` : ""}</p>
+    ${many ? `<div class="row" style="margin-bottom:14px"><button type="button" class="btn" data-upload-all ${S.busy!==false?"disabled":""}>Submit all ${S.pending.length}</button></div>` : ""}
     <div class="sheet">${slots}</div>`;
 }
 function renderVote(el, w){
-  const voted = w.voted, draft = S.draft[w.week] ||= {};
+  const voted = w.voted, draft = S.draft[w.week] ||= {}, cdraft = S.cdraft[w.week] ||= {};
   const pool = w.photos.filter(p => !p.mine).sort((a, b) => hash(S.user.id + a.id) - hash(S.user.id + b.id));
   const mineCount = w.photos.length - pool.length;
   const val = id => voted ? w.my_ratings[id] : draft[id];
   const rated = pool.filter(p => val(p.id) !== undefined).length;
   const frames = pool.map((p, i) => `<article class="frame"><div class="ph">${img(p.path, p.title)}<span class="fr">NO. ${String(i+1).padStart(2,"0")}</span><button type="button" class="zoom" data-zoom="${esc(p.path)}" aria-label="View photo ${i+1} larger"></button></div>
-     <div class="meta"><span class="t ${p.title ? "" : "dim"}">${esc(p.title || "No title")}</span>${stars(p.id, val(p.id), voted)}</div></article>`).join("");
+     <div class="meta"><span class="t ${p.title ? "" : "dim"}">${esc(p.title || "No title")}</span>${stars(p.id, val(p.id), voted)}
+     ${voted
+       ? (w.my_comments?.[p.id] ? `<p class="cmt-done">Your note: ${esc(w.my_comments[p.id])}</p>` : "")
+       : `<div class="cmt"><label class="eyebrow" for="c-${esc(p.id)}">Note for the photographer (optional)</label>
+          <textarea id="c-${esc(p.id)}" rows="2" maxlength="${CMAX}" data-comment="${esc(p.id)}" placeholder="What works, what you'd change">${esc(cdraft[p.id] || "")}</textarea>
+          <span class="cnt" data-cnt="${esc(p.id)}">${(cdraft[p.id] || "").length}/${CMAX}</span></div>`}
+     </div></article>`).join("");
   let bar = "";
   if (voted) bar = `<div class="ballotbar"><span class="done">✓ Your ballot is in for this week</span><span class="note">Results post Monday.</span></div>`;
   else if (pool.length) bar = `<div class="ballotbar"><span class="prog">${rated} of ${pool.length} rated</span>
      ${S.confirming ? `<span class="confirm"><span>Submit now? You can't change it this week.</span><button type="button" class="btn gold" data-cast ${S.busy!==false?"disabled":""}>${S.busy?"Saving…":"Yes, submit ballot"}</button><button type="button" class="btn ghost" data-unconfirm>Keep editing</button></span>`
                     : `<button type="button" class="btn" data-confirm ${rated < pool.length ? "disabled" : ""}>${rated < pool.length ? "Rate every photo to submit" : "Submit ballot"}</button>`}</div>`;
   el.innerHTML = `<div class="sh"><h2>Rate this week's sheet</h2><span class="eyebrow">${pool.length} photo${pool.length===1?"":"s"} · names hidden until Monday</span></div>
-    <p class="note lead">Give every photo 0 to 7 stars, then submit once. ${mineCount ? `Your own ${mineCount===1 ? "photo is" : mineCount + " photos are"} left off your ballot. ` : ""}Highest average wins; ties go to the most 7-star ratings.</p>
+    <p class="note lead">Give every photo 0 to 7 stars, then submit once. ${mineCount ? `Your own ${mineCount===1 ? "photo is" : mineCount + " photos are"} left off your ballot. ` : ""}Highest average wins; ties go to the most 7-star ratings. Notes are optional and go privately to the photographer after Monday's reveal, without your name.</p>
     ${pool.length ? `<div class="sheet">${frames}</div>` : `<div class="empty"><h3>Nothing to rate</h3><p class="note">${w.photos.length ? "The only photos this week are yours." : "No photos were submitted this week."}</p></div>`}
     ${bar}`;
 }
@@ -415,7 +514,19 @@ function renderTools(){
   el.innerHTML = `<span class="eyebrow">Admin</span>
     <label for="ov">This week's stage</label>
     <select id="ov"><option value="auto" ${ov==="auto"?"selected":""}>Follow the schedule</option><option value="submit" ${ov==="submit"?"selected":""}>Force submissions open</option><option value="vote" ${ov==="vote"?"selected":""}>Force voting open</option><option value="closed" ${ov==="closed"?"selected":""}>Close and reveal winner</option></select>
-    <span class="note">For holiday weeks, or to close early once everyone has voted.</span>`;
+    <span class="note">For holiday weeks, or to close early once everyone has voted.</span>
+    <div class="inbox">
+      <div class="inbox-head"><span class="eyebrow">Feedback inbox · ${S.inbox.filter(f => !f.done_at).length} open</span>
+        <label class="hint"><input type="checkbox" id="showDone" ${S.showDone ? "checked" : ""}> Show done</label></div>
+      ${S.inbox.length ? S.inbox.map(f => `<div class="fbitem ${f.done_at ? "done" : ""}">
+        <div class="top"><span class="tag ${f.kind}">${f.kind === "bug" ? "Bug" : "Idea"}</span>
+          <span>${esc(f.author_name)}${f.author_email ? ` · ${esc(f.author_email)}` : ""}</span><span>${esc(fmtDate(f.created_at))}</span>
+          ${f.context?.stage ? `<span>Stage: ${esc(f.context.stage)}</span>` : ""}
+          <button type="button" class="linkbtn" data-done="${esc(f.id)}" data-val="${f.done_at ? "0" : "1"}">${f.done_at ? "Reopen" : "Mark done"}</button></div>
+        <div class="body">${esc(f.body)}</div>
+        ${f.kind === "bug" && f.context?.ua ? `<div class="hint">${esc(f.context.ua)}</div>` : ""}
+      </div>`).join("") : `<p class="note">No ${S.showDone ? "" : "open "}feedback.</p>`}
+    </div>`;
 }
 
 /* ---------- actions ---------- */
@@ -428,9 +539,24 @@ async function prepare(file){
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
   return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("Couldn't prepare the photo.")), "image/jpeg", 0.9));
 }
-async function upload(i){
-  const pend = S.pending[i]; if (!pend || S.busy !== false) return;
-  S.busy = i; render();
+function addFiles(list){
+  if (!S.wk || S.wk.stage !== "submit") return toast("Submissions aren't open right now.", true);
+  const all = [...list];
+  const ok = all.filter(f => OK_TYPES.test(f.type) && f.size <= 80 * 1024 * 1024);
+  const room = MAX - S.wk.photos.filter(p => p.mine).length - S.pending.length;
+  const take = ok.slice(0, Math.max(0, room));
+  take.forEach(f => S.pending.push({ key: "p" + Math.random().toString(36).slice(2, 9), file: f, url: URL.createObjectURL(f), caption: "" }));
+  const notes = [];
+  if (all.length > ok.length) notes.push(`${all.length - ok.length} skipped (only JPG, PNG or WebP; export HEIC or RAW as JPG first)`);
+  if (ok.length > take.length) notes.push(`${ok.length - take.length} skipped (4 photos max per week)`);
+  if (notes.length) toast((take.length ? `Added ${take.length}. ` : "") + notes.join("; ") + ".", !take.length);
+  render();
+}
+function dropPending(key){
+  const i = S.pending.findIndex(p => p.key === key);
+  if (i >= 0){ URL.revokeObjectURL(S.pending[i].url); S.pending.splice(i, 1); }
+}
+async function uploadOne(pend){
   const path = `${S.wk.week}/${crypto.randomUUID()}.jpg`;
   let uploaded = false;
   try {
@@ -440,11 +566,21 @@ async function upload(i){
     uploaded = true;
     const { error } = await sb.rpc("submit_photo", { p_path: path, p_title: pend.caption || "" });
     if (error) throw error;
-    URL.revokeObjectURL(pend.url); delete S.pending[i];
-    toast("Photo submitted");
+    dropPending(pend.key);
   } catch (e) {
     if (uploaded) sb.storage.from("photos").remove([path]).catch(() => {});
-    toast(/row-level security/i.test(e?.message || "") ? "Submissions are closed for this week." : errMsg(e, "Upload failed. Try again."), true);
+    throw new Error(/row-level security/i.test(e?.message || "") ? "Submissions are closed for this week." : errMsg(e, "Upload failed. Try again."));
+  }
+}
+async function upload(keys){
+  if (S.busy !== false) return;
+  const queue = S.pending.filter(p => keys.includes(p.key));
+  let done = 0;
+  try {
+    for (const pend of queue){ S.busy = pend.key; render(); await uploadOne(pend); done++; }
+    toast(done === 1 ? "Photo submitted" : `${done} photos submitted`);
+  } catch (e) {
+    toast((done ? `${done} submitted. ` : "") + e.message, true);
   } finally { S.busy = false; await load(); render(); }
 }
 async function removePhoto(id){
@@ -463,11 +599,16 @@ async function castBallot(){
   if (pool.some(p => draft[p.id] === undefined)) return toast("Rate every photo first.", true);
   S.busy = true; render();
   try {
-    const ratings = {}; pool.forEach(p => ratings[p.id] = draft[p.id]);
-    const { error } = await sb.rpc("cast_ballot", { p_ratings: ratings });
+    const ratings = {}, comments = {}, cd = S.cdraft[w.week] || {};
+    pool.forEach(p => {
+      ratings[p.id] = draft[p.id];
+      const c = (cd[p.id] || "").trim();
+      if (c) comments[p.id] = c.slice(0, CMAX);
+    });
+    const { error } = await sb.rpc("cast_ballot", { p_ratings: ratings, p_comments: comments });
     if (error) throw error;
     S.confirming = false; toast("Ballot submitted");
-    try { localStorage.removeItem("potw-draft-" + w.week); } catch {}
+    clearDraft(w.week);
   } catch (e) { toast(errMsg(e, "Couldn't save your ballot. Try again."), true); }
   finally { S.busy = false; await load(); render(); }
 }
@@ -477,15 +618,61 @@ async function setStage(v){
   S.resultsWeek = null; load();
 }
 
+/* ---------- feedback ---------- */
+function openFeedback(){
+  $("fbErr").textContent = ""; $("fbBody").value = ""; $("fbKindIdea").checked = true;
+  const d = $("fbDialog");
+  if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  $("fbBody").focus();
+}
+function closeFeedback(){ const d = $("fbDialog"); if (d.close) d.close(); else d.removeAttribute("open"); }
+$("fbCancel").addEventListener("click", closeFeedback);
+$("fbForm").addEventListener("submit", async e => {
+  e.preventDefault(); $("fbErr").textContent = "";
+  const body = $("fbBody").value.trim();
+  if (!body) return $("fbErr").textContent = "Write a few words first.";
+  const kind = $("fbKindBug").checked ? "bug" : "idea";
+  const context = { stage: S.wk?.stage || null, week: S.wk?.week || null, ua: navigator.userAgent.slice(0, 300),
+                    screen: `${window.innerWidth}x${window.innerHeight}`, page: location.pathname };
+  $("fbSend").disabled = true;
+  const { error } = await sb.rpc("send_feedback", { p_kind: kind, p_body: body, p_context: context });
+  $("fbSend").disabled = false;
+  if (error) return $("fbErr").textContent = errMsg(error, "Couldn't send. Try again.");
+  closeFeedback(); toast("Thanks. Your feedback was sent to the admins.");
+  if (S.wk?.is_admin) load();
+});
+async function markDone(id, done){
+  const { error } = await sb.rpc("set_feedback_done", { p_id: id, p_done: done });
+  if (error) return toast(errMsg(error, "Couldn't update that item."), true);
+  load();
+}
+
+/* ---------- drag & drop from Finder / desktop ---------- */
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes("Files");
+const canDrop = () => !!(S.user && S.wk && S.wk.stage === "submit" && !$("app").hidden);
+window.addEventListener("dragenter", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; if (canDrop()) $("dropveil").hidden = false; });
+window.addEventListener("dragover", e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = canDrop() ? "copy" : "none"; });
+window.addEventListener("dragleave", e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("dropveil").hidden = true; });
+window.addEventListener("drop", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; $("dropveil").hidden = true;
+  if (!S.user || !S.wk) return;
+  addFiles(e.dataTransfer.files);
+});
+
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.id === "signOut") { sb.auth.signOut(); return; }
+  if (b.id === "openFeedback") return openFeedback();
+  if (b.dataset.done !== undefined) return markDone(b.dataset.done, b.dataset.val === "1");
+  if (b.hasAttribute("data-upload-all")) return upload(S.pending.map(p => p.key));
   if (b.dataset.zoom){ const lb = $("lb"); lb.querySelector("img").src = url(b.dataset.zoom); lb.hidden = false; return; }
   if (b.dataset.k !== undefined && b.dataset.v !== undefined){
     const wk = S.wk.week; (S.draft[wk] ||= {})[b.dataset.k] = +b.dataset.v; saveDraft(wk); S.confirming = false; render(); return;
   }
-  if (b.dataset.upload !== undefined) return upload(+b.dataset.upload);
-  if (b.dataset.cancel !== undefined){ const p = S.pending[+b.dataset.cancel]; if (p) URL.revokeObjectURL(p.url); delete S.pending[+b.dataset.cancel]; return render(); }
+  if (b.dataset.upload !== undefined) return upload([b.dataset.upload]);
+  if (b.dataset.cancel !== undefined){ dropPending(b.dataset.cancel); return render(); }
   if (b.dataset.remove !== undefined) return removePhoto(b.dataset.remove);
   if (b.hasAttribute("data-confirm")){ S.confirming = true; return render(); }
   if (b.hasAttribute("data-unconfirm")){ S.confirming = false; return render(); }
@@ -495,14 +682,20 @@ $("lb").addEventListener("click", () => $("lb").hidden = true);
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("lb").hidden = true; });
 document.addEventListener("change", e => {
   const t = e.target;
-  if (t.dataset?.file !== undefined && t.files?.[0]){
-    const f = t.files[0];
-    if (f.size > 80 * 1024 * 1024) return toast("That file is too large. Export a JPG and try again.", true);
-    S.pending[+t.dataset.file] = { file:f, url:URL.createObjectURL(f), caption:"" }; render();
-  }
+  if (t.dataset?.file !== undefined && t.files?.length){ const files = [...t.files]; t.value = ""; addFiles(files); }
   if (t.id === "ov") setStage(t.value);
+  if (t.id === "showDone"){ S.showDone = t.checked; load(); }
 });
-document.addEventListener("input", e => { const t = e.target; if (t.dataset?.cap !== undefined && S.pending[+t.dataset.cap]) S.pending[+t.dataset.cap].caption = t.value; });
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset?.cap !== undefined){ const p = S.pending.find(x => x.key === t.dataset.cap); if (p) p.caption = t.value; }
+  if (t.dataset?.comment !== undefined && S.wk){
+    const id = t.dataset.comment, wk = S.wk.week;
+    (S.cdraft[wk] ||= {})[id] = t.value.slice(0, CMAX);
+    const c = document.querySelector(`[data-cnt="${CSS.escape(id)}"]`); if (c) c.textContent = `${t.value.length}/${CMAX}`;
+    clearTimeout(saveDraft.h); saveDraft.h = setTimeout(() => saveDraft(wk), 400);
+  }
+});
 document.addEventListener("error", e => { if (e.target.tagName === "IMG") e.target.classList.add("broken"); }, true);
 setInterval(() => { if (!document.hidden) load(); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
