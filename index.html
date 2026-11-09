@@ -14,8 +14,8 @@
    SUPABASE_KEY is the "anon public" key (or the "publishable" key, sb_publishable_…).
    Never put the service_role / secret key in this file. */
 window.POTW_CONFIG = {
-  SUPABASE_URL: "https://dbhhvzgzmfvnflrgpxaf.supabase.co",
-  SUPABASE_KEY: "sb_publishable_7rfzaO354hQkHfpjIUMfBw_5DOa2ZEc",
+  SUPABASE_URL: "https://YOUR-PROJECT-REF.supabase.co",
+  SUPABASE_KEY: "YOUR-ANON-OR-PUBLISHABLE-KEY",
   EMAIL_DOMAIN: "kent.edu"
 };
 /* ================================================================================ */
@@ -196,6 +196,8 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
 .cl h3 small{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:none}
 .cl ul{margin:0;padding-left:20px;display:grid;gap:4px}
 .banner{background:var(--gold-soft);border:1.5px solid var(--gold);color:var(--ink);border-radius:8px;padding:12px 16px;font-weight:600}
+.banner.window{font-weight:400;font-size:17px;margin-bottom:12px}
+.banner.window strong{font-family:var(--display);font-size:22px;letter-spacing:.02em;text-transform:uppercase;margin-left:4px}
 
 .lb{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));cursor:zoom-out}
 .lb img{max-width:100%;max-height:92vh;object-fit:contain}
@@ -306,6 +308,8 @@ dialog.fb textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line)
    page works with: raise it whenever a release changes setup.sql, and
    bump db_version() in setup.sql to match. */
 const CHANGELOG = [
+  { v: "2.2", date: "2026-11-09", items: [
+    "Shows which dates count: photos taken from last Friday through this Thursday" ] },
   { v: "2.1", date: "2026-10-27", items: [
     "Version number and this What's new panel",
     "The site now warns if it was updated without updating the database" ] },
@@ -364,6 +368,15 @@ function weekLabel(wk){
   const s = new Date(wk + "T12:00:00Z"), e = new Date(s); e.setUTCDate(e.getUTCDate() + 6);
   const f = d => d.toLocaleDateString("en-US", { month:"short", day:"numeric", timeZone:"UTC" });
   return `${f(s)} – ${f(e)}`;
+}
+// Eligible shooting window: the Friday before this week's Monday through this week's Thursday,
+// so every day belongs to exactly one week (submissions close Thursday 11:59 PM).
+function shootWindow(wk){
+  const mon = new Date(wk + "T12:00:00Z");
+  const from = new Date(mon); from.setUTCDate(from.getUTCDate() - 3);
+  const to = new Date(mon); to.setUTCDate(to.getUTCDate() + 3);
+  const f = d => d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric", timeZone:"UTC" });
+  return `${f(from)} – ${f(to)}`;
 }
 function hash(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function loadDraft(wk, kind = "draft"){ try { return JSON.parse(localStorage.getItem(`potw-${kind}-${wk}`)) || {}; } catch { return {}; } }
@@ -548,7 +561,8 @@ function renderSubmit(el, w){
   }
   const many = S.pending.length > 1;
   el.innerHTML = `<div class="sh"><h2>Your submissions</h2><span class="eyebrow">${mine.length} of ${MAX} used · ${w.total - mine.length} from teammates</span></div>
-    <p class="note lead">Pick up to four frames from this week. Voting opens Friday and is anonymous: nobody sees who shot what until Monday's reveal. Teammates' photos stay hidden until then too.${open ? ` <span class="hint">You can also drag photos from Finder or your desktop anywhere onto this page.</span>` : ""}</p>
+    <div class="banner window lead">Photos must be taken <strong>${esc(shootWindow(w.week))}</strong></div>
+    <p class="note lead">Pick up to four frames you shot in that window. Voting opens Friday and is anonymous: nobody sees who shot what until Monday's reveal. Teammates' photos stay hidden until then too.${open ? ` <span class="hint">You can also drag photos from Finder or your desktop anywhere onto this page.</span>` : ""}</p>
     ${many ? `<div class="row" style="margin-bottom:14px"><button type="button" class="btn" data-upload-all ${S.busy!==false?"disabled":""}>Submit all ${S.pending.length}</button></div>` : ""}
     <div class="sheet">${slots}</div>`;
 }
@@ -571,7 +585,7 @@ function renderVote(el, w){
   else if (pool.length) bar = `<div class="ballotbar"><span class="prog">${rated} of ${pool.length} rated</span>
      ${S.confirming ? `<span class="confirm"><span>Submit now? You can't change it this week.</span><button type="button" class="btn gold" data-cast ${S.busy!==false?"disabled":""}>${S.busy?"Saving…":"Yes, submit ballot"}</button><button type="button" class="btn ghost" data-unconfirm>Keep editing</button></span>`
                     : `<button type="button" class="btn" data-confirm ${rated < pool.length ? "disabled" : ""}>${rated < pool.length ? "Rate every photo to submit" : "Submit ballot"}</button>`}</div>`;
-  el.innerHTML = `<div class="sh"><h2>Rate this week's sheet</h2><span class="eyebrow">${pool.length} photo${pool.length===1?"":"s"} · names hidden until Monday</span></div>
+  el.innerHTML = `<div class="sh"><h2>Rate this week's sheet</h2><span class="eyebrow">${pool.length} photo${pool.length===1?"":"s"} · taken ${esc(shootWindow(w.week))} · names hidden until Monday</span></div>
     <p class="note lead">Give every photo 0 to 7 stars, then submit once. ${mineCount ? `Your own ${mineCount===1 ? "photo is" : mineCount + " photos are"} left off your ballot. ` : ""}Highest average wins; ties go to the most 7-star ratings. Notes are optional and go privately to the photographer after Monday's reveal, without your name.</p>
     ${pool.length ? `<div class="sheet">${frames}</div>` : `<div class="empty"><h3>Nothing to rate</h3><p class="note">${w.photos.length ? "The only photos this week are yours." : "No photos were submitted this week."}</p></div>`}
     ${bar}`;
